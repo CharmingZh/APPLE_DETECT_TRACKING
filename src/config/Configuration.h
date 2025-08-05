@@ -48,6 +48,15 @@ namespace Config {
     // =================================================================
     // 感兴趣区域 (Region of Interest, ROI) - 你的原始值 {820, 100, 540, 930}
     const cv::Rect ROI = {820, 100, 1360 - 820, 1030 - 100};
+
+    // =================================================================
+    // [核心修改] 为两条线定义独立的ROI区域
+    // =================================================================
+    // !!! 请根据你的视频画面精确调整这两个矩形框的位置和大小 !!!
+    // 格式：{x坐标, y坐标, 宽度, 高度}
+    const cv::Rect ROI_A = {820, 100, 200, 900}; // 左侧通道 A 的ROI
+    const cv::Rect ROI_B = {1130, 100, 250, 900}; // 右侧通道 B 的ROI
+
     // HSV 颜色阈值，用于分割目标
     const cv::Scalar LOWER_HSV = {10, 40, 40};
     const cv::Scalar UPPER_HSV = {40, 255, 255};
@@ -68,9 +77,13 @@ namespace Config {
     constexpr int MAX_MISSED_FRAMES = 5;
     // (用途待定) 初始垂直移动量
     constexpr float INITIAL_VERTICAL_MOVEMENT = -20.0f;
-    // 左右两侧目标的起始编号
-    constexpr int START_NUMBER_LEFT = 1;
-    constexpr int START_NUMBER_RIGHT = 10;
+    // // 左右两侧目标的起始编号
+    // constexpr int START_NUMBER_LEFT = 1;
+    // constexpr int START_NUMBER_RIGHT = 10;
+
+    // 为通道A和B分配独立的起始编号，确保编号组之间不重复
+    constexpr int START_NUMBER_A = 1;    // 通道A的目标将从1开始编号 (1, 2, 3...)
+    constexpr int START_NUMBER_B = 1001; // 通道B的目标将从1001开始编号 (1001, 1002...)
 
 
     // =================================================================
@@ -118,6 +131,30 @@ namespace Config {
     const int MIN_TRACK_LENGTH_FOR_STATS = 20;
     // 在计算速度前，从每个追踪轨迹的开始和结尾去掉多少帧，以消除噪声
     const int TRIM_FRAMES_FROM_ENDS = 10;
+
+    // =================================================================
+    // [新增] 分拣与延时逻辑配置
+    // =================================================================
+
+    // 目标退出后，等待多少毫秒再执行分拣动作
+    constexpr int ACTION_DELAY_MS = 500; // 延时500毫秒
+
+    namespace SortingLogic {
+        // 定义一个序列，只对这个序列中的第n个目标进行分拣
+        // 例如：{1, 3, 4} 表示只分拣第1、第3、第4个目标
+
+        // // 左侧通道 A 的分拣序列
+        // const std::set<int> SEQUENCE_A = {1, 2, 3, 4, 5, 6, 7, 8, 9};
+        //
+        // // 右侧通道 B 的分拣序列
+        // const std::set<int> SEQUENCE_B = {10, 11, 12, 13, 14, 15, 16, 17, 18};
+
+        // 左侧通道 A 的分拣序列
+        const std::set<int> SEQUENCE_A = {1, 8};
+
+        // 右侧通道 B 的分拣序列
+        const std::set<int> SEQUENCE_B = {1001, 1002};
+    }
 
 } // namespace Config
 

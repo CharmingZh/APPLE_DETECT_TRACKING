@@ -4,26 +4,27 @@
 #include "utils/DataTypes.h"
 #include "utils/ThreadSafeQueue.h"
 #include "TrackManager.h"
+#include "SimpleSerial.h" // Include the serial header
 #include <string>
 #include <vector>
 #include <unordered_map>
 #include <atomic>
-#include <thread> // 包含了thread头文件
+#include <thread>
 
 class ImageTracker {
 public:
-    // [关键修改] 将内部结构体从 Config 重命名为 Settings
-    // 它只负责携带那些每次运行都可能不同的参数
+    // This struct holds settings that can change per run
     struct Settings {
         std::string input_path;
         bool save_video = true;
         bool save_csv = true;
     };
 
-    // [关键修改] 构造函数使用新的 Settings 类型
     ImageTracker(const Settings& config);
     ~ImageTracker();
-    void run();
+
+    // The run method now accepts a pointer to the serial object
+    void run(SimpleSerial* serial);
 
 private:
     void producer_thread_main(unsigned int num_consumers);
@@ -34,9 +35,10 @@ private:
     void save_video();
     void process_and_output_statistics();
 
-    // [关键修改] 成员变量的类型也同步更新
+    // Member variables
     Settings m_config;
     std::atomic<bool> m_is_running = {true};
+    SimpleSerial* m_serial = nullptr; // Pointer to the serial object
 
     std::vector<std::string> m_image_files;
     int m_total_frames = 0;

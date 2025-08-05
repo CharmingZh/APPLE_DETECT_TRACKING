@@ -15,7 +15,8 @@ file(GLOB_RECURSE PROJECT_SOURCES "src/*.cpp")
 list(APPEND PROJECT_SOURCES "${THIRD_PARTY_DIR}/hungarian/Hungarian.cpp")
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCES}
         src/ImageTracker.cpp
-        src/ImageTracker.h)
+        src/ImageTracker.h
+        src/SimpleSerial.h)
 
 target_include_directories(${PROJECT_NAME} PUBLIC
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
