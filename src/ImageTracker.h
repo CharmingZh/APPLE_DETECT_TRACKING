@@ -5,20 +5,23 @@
 #include "utils/ThreadSafeQueue.h"
 #include "TrackManager.h"
 #include <string>
-#include <memory>
 #include <vector>
 #include <unordered_map>
 #include <atomic>
+#include <thread> // 包含了thread头文件
 
 class ImageTracker {
 public:
-    struct Config {
+    // [关键修改] 将内部结构体从 Config 重命名为 Settings
+    // 它只负责携带那些每次运行都可能不同的参数
+    struct Settings {
         std::string input_path;
         bool save_video = true;
         bool save_csv = true;
     };
 
-    ImageTracker(const Config& config);
+    // [关键修改] 构造函数使用新的 Settings 类型
+    ImageTracker(const Settings& config);
     ~ImageTracker();
     void run();
 
@@ -27,19 +30,13 @@ private:
     void consumer_thread_main();
     void main_processing_loop();
 
-    void visualize(cv::Mat& frame, int frame_idx,
-                   const std::unordered_map<int, TrackedObject>& objects,
-                   const cv::Mat& labels_in_roi);
+    void visualize(cv::Mat& frame, int frame_idx, const std::unordered_map<int, TrackedObject>& objects, const cv::Mat& labels_in_roi);
     void save_video();
     void process_and_output_statistics();
 
-    Config m_config;
+    // [关键修改] 成员变量的类型也同步更新
+    Settings m_config;
     std::atomic<bool> m_is_running = {true};
-
-    std::string m_output_dir;
-    cv::Rect m_roi;
-    cv::Size m_display_size;
-    const float m_source_fps = 30.0f;
 
     std::vector<std::string> m_image_files;
     int m_total_frames = 0;
