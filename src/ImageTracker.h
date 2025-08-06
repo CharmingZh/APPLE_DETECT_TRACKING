@@ -4,7 +4,7 @@
 #include "utils/DataTypes.h"
 #include "utils/ThreadSafeQueue.h"
 #include "TrackManager.h"
-#include "SimpleSerial.h" // Include the serial header
+#include "SimpleSerial.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -13,9 +13,8 @@
 
 class ImageTracker {
 public:
-    // This struct holds settings that can change per run
     struct Settings {
-        std::string input_path;
+        std::string input_path; // 仅用于数据集模式
         bool save_video = true;
         bool save_csv = true;
     };
@@ -23,22 +22,21 @@ public:
     ImageTracker(const Settings& config);
     ~ImageTracker();
 
-    // The run method now accepts a pointer to the serial object
-    void run(SimpleSerial* serial);
+    // 为两种模式提供不同的入口函数
+    void runFromDataset(SimpleSerial* serial); // 用于本地数据集
+    void runFromCamera(SimpleSerial* serial);  // 用于实时相机
 
 private:
-    void producer_thread_main(unsigned int num_consumers);
-    void consumer_thread_main();
-    void main_processing_loop();
+    void producer_thread_from_files(unsigned int num_consumers);
+    void consumer_thread();
 
     void visualize(cv::Mat& frame, int frame_idx, const std::unordered_map<int, TrackedObject>& objects, const cv::Mat& labels_in_roi);
     void save_video();
     void process_and_output_statistics();
 
-    // Member variables
     Settings m_config;
     std::atomic<bool> m_is_running = {true};
-    SimpleSerial* m_serial = nullptr; // Pointer to the serial object
+    SimpleSerial* m_serial = nullptr;
 
     std::vector<std::string> m_image_files;
     int m_total_frames = 0;

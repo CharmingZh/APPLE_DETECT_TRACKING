@@ -6,9 +6,9 @@
 #include <string>
 #include <algorithm>
 #include <vector>
-#include <functional> // 为了使用 std::function
+#include <functional>
 
-// --- 颜色定义和序数词函数保持不变 ---
+// --- 颜色定义 ---
 const std::string ANSI_COLOR_CYAN   = "\033[36m";
 const std::string ANSI_COLOR_GREEN  = "\033[32m";
 const std::string ANSI_COLOR_YELLOW = "\033[33m";
@@ -17,22 +17,20 @@ std::string getOrdinal(int n) {
     if (n <= 0) return std::to_string(n);
     if (n % 100 >= 11 && n % 100 <= 13) return std::to_string(n) + "th";
     switch (n % 10) {
-        case 1: return std::to_string(n) + "st";
-        case 2: return std::to_string(n) + "nd";
-        case 3: return std::to_string(n) + "rd";
+        case 1:  return std::to_string(n) + "st";
+        case 2:  return std::to_string(n) + "nd";
+        case 3:  return std::to_string(n) + "rd";
         default: return std::to_string(n) + "th";
     }
 }
 
 TrackManager::TrackManager() {
-    // [核心修改] 初始化新的编号计数器
     m_next_number_A = Config::START_NUMBER_A;
     m_next_number_B = Config::START_NUMBER_B;
     m_colors = {{255,0,0},{0,255,0},{0,0,255},{255,255,0},{0,255,255},{255,0,255},{128,0,0},{0,128,0},{0,0,128},{128,128,0},{0,128,128},{128,0,128}};
 }
 
 void TrackManager::update(const ConsumerResult& result, std::unordered_map<int, TrackedObject>& tracked_objects) {
-    // 1. 获取当前帧的所有有效检测结果
     std::vector<Detection> all_detections;
     for (int i = 1; i < result.stats.rows; ++i) {
         if (result.stats.at<int>(i, cv::CC_STAT_AREA) >= Config::MIN_AREA_THRESHOLD) {
@@ -44,14 +42,12 @@ void TrackManager::update(const ConsumerResult& result, std::unordered_map<int, 
         }
     }
 
-    // --- 核心重构：定义一个通用的ROI处理函数 ---
     auto process_roi = [&](const cv::Rect& roi,
                            int& next_assigned_number,
                            int& exit_counter,
                            const std::set<int>& sorting_sequence,
                            char action_char) {
 
-        // a. 筛选出属于当前ROI的检测和已追踪对象
         std::vector<Detection> roi_detections;
         for (const auto& det : all_detections) {
             if (roi.contains(det.centroid)) {
@@ -66,7 +62,6 @@ void TrackManager::update(const ConsumerResult& result, std::unordered_map<int, 
             }
         }
 
-        // b. 执行匹配 (仅在当前ROI内)
         std::set<int> matched_track_ids;
         std::set<int> matched_detection_labels;
 
@@ -100,7 +95,6 @@ void TrackManager::update(const ConsumerResult& result, std::unordered_map<int, 
             }
         }
 
-        // c. 更新ROI内未匹配的旧目标
         for (int tid : roi_track_ids) {
             if (matched_track_ids.find(tid) == matched_track_ids.end()) {
                 tracked_objects.at(tid).missed_frames++;
@@ -108,14 +102,13 @@ void TrackManager::update(const ConsumerResult& result, std::unordered_map<int, 
             }
         }
 
-        // d. 创建ROI内的新目标
         for (const auto& det : roi_detections) {
             if (matched_detection_labels.find(det.label_id) == matched_detection_labels.end()) {
                 TrackedObject new_obj;
                 new_obj.unique_id = m_next_unique_id++;
                 new_obj.assigned_number = next_assigned_number++;
                 new_obj.centroid = det.centroid;
-                new_obj.velocity = {0, Config::INITIAL_VERTICAL_MOVEMENT};
+                new_obj.velocity = Config::INITIAL_MOVEMENT;
                 new_obj.color = m_colors[m_color_index++ % m_colors.size()];
                 new_obj.current_label_id = det.label_id;
                 new_obj.current_bbox = det.bbox;
@@ -123,9 +116,8 @@ void TrackManager::update(const ConsumerResult& result, std::unordered_map<int, 
             }
         }
 
-        // e. 清理ROI内“死亡”的目标并触发动作
         for (auto it = roi_track_ids.begin(); it != roi_track_ids.end(); ++it) {
-            if (tracked_objects.at(*it).missed_frames > Config::MAX_MISSED_FRAMES) {
+            if (tracked_objects.count(*it) && tracked_objects.at(*it).missed_frames > Config::MAX_MISSED_FRAMES) {
                 const TrackedObject& dead_object = tracked_objects.at(*it);
                 exit_counter++;
                 std::cout << ANSI_COLOR_CYAN << "[INFO] Target #" << dead_object.assigned_number << " exited from Line " << action_char
@@ -143,7 +135,6 @@ void TrackManager::update(const ConsumerResult& result, std::unordered_map<int, 
         }
     };
 
-    // 2. 独立处理每个ROI
     process_roi(Config::ROI_A, m_next_number_A, m_exit_counter_A, Config::SortingLogic::SEQUENCE_A, 'A');
     process_roi(Config::ROI_B, m_next_number_B, m_exit_counter_B, Config::SortingLogic::SEQUENCE_B, 'B');
 }
